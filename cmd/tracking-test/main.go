@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"go-sat-tracker/internal/config"
-	"go-sat-tracker/internal/satellite"
-	"go-sat-tracker/internal/tracking"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/pmcanseco/go-sat-tracker/internal/config"
+	"github.com/pmcanseco/go-sat-tracker/internal/satellite"
+	"github.com/pmcanseco/go-sat-tracker/internal/tracking"
 )
 
 func main() {

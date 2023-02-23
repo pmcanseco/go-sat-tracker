@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"go-sat-tracker/internal/satellite"
+	"github.com/pmcanseco/go-sat-tracker/internal/satellite"
 )
 
 type Tracker interface {

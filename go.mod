@@ -1,4 +1,4 @@
-module go-sat-tracker
+module github.com/pmcanseco/go-sat-tracker
 
 go 1.18
 
@@ -8,6 +8,7 @@ require (
 	github.com/onsi/ginkgo v1.2.1-0.20160509182050-5437a97bf824
 	github.com/onsi/gomega v1.26.0
 	github.com/pmcanseco/go-satellite v0.0.3
+	tinygo.org/x/drivers v0.24.0
 )
 
 require (

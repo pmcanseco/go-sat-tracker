@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"go-sat-tracker/internal/config"
 	"math"
 	"time"
+
+	"github.com/pmcanseco/go-sat-tracker/internal/config"
 
 	gosat "github.com/pmcanseco/go-satellite"
 )
