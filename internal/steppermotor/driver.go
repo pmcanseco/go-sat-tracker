@@ -33,7 +33,7 @@ type DeviceConfig struct {
 // New returns a new stepper driver given a DeviceConfig
 func New(config DeviceConfig) *Device {
 	if config.StepCount == 0 || config.RPM == 0 {
-		panic("config.StepCount and config.RPM must be > 0")
+		panic("StepCount and RPM must be > 0")
 	}
 	return &Device{
 		stepPin:   config.StepPin,
