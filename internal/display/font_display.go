@@ -26,8 +26,6 @@ func NewFontDisplay(disp Device, width, height int, font Font) *FontDisplay {
 
 func (d *FontDisplay) addLabel(x, y int, label string) {
 	spix := d.font.Pixels(label)
-	//fmt.Println("PABLO: pixel buffer: ", len(d.pixels), len(d.pixels[0]))
-	//fmt.Println("PABLO: font  buffer: ", len(spix), len(spix[0]))
 	var px, py = x, y
 	var fx, fy int
 
@@ -67,7 +65,6 @@ func (d *FontDisplay) PrintAt(line int, s string, clear bool) {
 func (d *FontDisplay) update() {
 	d.pixels = d.getPixelBuffer()
 	for y, i := 0, 0; i < len(d.lines); y, i = (i+1)*d.font.charHeight, i+1 {
-		fmt.Printf("writing %s at y %d\n", d.lines[i], y)
 		d.addLabel(0, y, string(d.lines[i][:]))
 	}
 	d.display()
