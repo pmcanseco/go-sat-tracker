@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+const (
+	pulseLength = 2 * time.Microsecond
+	wakeTime    = 1000 * time.Microsecond
+)
+
 // Device holds the pins and the delay between steps
 type Device struct {
 	stepPin   machine.Pin
@@ -51,7 +56,7 @@ func (d *Device) Move(steps int) {
 	} else {
 		d.dirPin.Low()
 	}
-	time.Sleep(1000 * time.Microsecond)
+	time.Sleep(wakeTime)
 
 	for s := 0; s < steps; s++ {
 		d.step()
@@ -61,7 +66,7 @@ func (d *Device) Move(steps int) {
 
 func (d *Device) step() {
 	d.stepPin.High()
-	time.Sleep(2 * time.Microsecond)
+	time.Sleep(pulseLength)
 	d.stepPin.Low()
 }
 
