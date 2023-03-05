@@ -22,7 +22,7 @@ var _ = Describe("Display Tests", func() {
 				PixelSetter: func(i int16, i2 int16, rgba color.RGBA) {},
 				Displayer:   func() error { return nil },
 				Clearer:     func() {},
-			})
+			}, 128, 32)
 
 			hello := "hello"
 			d.Print(hello)
