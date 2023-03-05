@@ -4,6 +4,9 @@ import "image/color"
 
 var _ Device = (*CustomDevice)(nil)
 
+// CustomDevice is a customizable implementation of the Device interface.
+// Set the functions to whatever you'd like to keep the complexity of the
+// hardware outside of this package.
 type CustomDevice struct {
 	PixelSetter func(int16, int16, color.RGBA)
 	Displayer   func() error
