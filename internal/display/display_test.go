@@ -54,8 +54,8 @@ var _ = Describe("Display Tests", func() {
 			cleared := "cleared!"
 			d.PrintAt(0, cleared, true)
 			Expect(d.lines[0]).To(Equal([]byte(cleared)))
-			Expect(d.lines[1]).To(Equal(make([]byte, 0, cols)))
-			Expect(d.lines[2]).To(Equal(make([]byte, 0, cols)))
+			Expect(d.lines[1]).To(Equal(make([]byte, 0, d.cols)))
+			Expect(d.lines[2]).To(Equal(make([]byte, 0, d.cols)))
 		})
 	})
 })

@@ -10,11 +10,6 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
-const (
-	rows = 3
-	cols = 18
-)
-
 var (
 	off = PixelState(color.RGBA{A: 255})
 	on  = PixelState(color.RGBA{R: 255, G: 255, B: 255, A: 255})
@@ -30,6 +25,7 @@ type Device interface {
 
 type Display struct {
 	width, height int
+	rows, cols    int
 	img           draw.Image
 	device        Device
 	lines         [][]byte
@@ -39,10 +35,12 @@ func New(disp Device, width, height int) *Display {
 	d := Display{
 		width:  width,
 		height: height,
+		rows:   height / 10, // font height
+		cols:   width / 7,   // font width
 		device: disp,
 		img:    image.NewRGBA(image.Rect(0, 0, width, height)),
-		lines:  getNewLines(),
 	}
+	d.lines = d.getNewLines()
 
 	return &d
 }
@@ -89,15 +87,15 @@ func (d *Display) display() {
 }
 
 func (d *Display) clear() {
-	d.lines = getNewLines()
+	d.lines = d.getNewLines()
 	d.device.Clear()
 }
 
 func (d *Display) update() {
 	d.img = image.NewRGBA(image.Rect(0, 0, d.width, d.height))
-	d.addLabel(0, 9, string(d.lines[0][:]))
-	d.addLabel(0, 21, string(d.lines[1][:]))
-	d.addLabel(0, 32, string(d.lines[2][:]))
+	for y, i := d.height, len(d.lines)-1; y > 0; y, i = y-(10+i), i-1 { // 10 = font height
+		d.addLabel(0, y, string(d.lines[i][:]))
+	}
 	d.display()
 }
 
@@ -108,10 +106,10 @@ func (d *Display) pushLines(s string) {
 	d.lines[len(d.lines)-1] = []byte(s)
 }
 
-func getNewLines() [][]byte {
+func (d *Display) getNewLines() [][]byte {
 	var out [][]byte
-	for i := 0; i < rows; i++ {
-		out = append(out, make([]byte, 0, cols))
+	for i := 0; i < d.rows; i++ {
+		out = append(out, make([]byte, 0, d.cols))
 	}
 	return out
 }
