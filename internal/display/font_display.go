@@ -13,8 +13,8 @@ func NewFontDisplay(disp Device, width, height int, font Font) *FontDisplay {
 	d := FontDisplay{
 		width:  width,
 		height: height,
-		rows:   height / 10, // font height
-		cols:   width / 7,   // font width
+		rows:   height / font.charHeight, // font height
+		cols:   width / font.charWidth,   // font width
 		font:   font,
 		device: disp,
 	}
@@ -66,8 +66,9 @@ func (d *FontDisplay) PrintAt(line int, s string, clear bool) {
 
 func (d *FontDisplay) update() {
 	d.pixels = d.getPixelBuffer()
-	for y, i := d.height, len(d.lines)-1; y > 0; y, i = y-(d.font.charHeight+i), i-1 {
-		//d.addLabel(0, y, string(d.lines[i][:]))
+	for y, i := 0, 0; i < len(d.lines); y, i = (i+1)*d.font.charHeight, i+1 {
+		fmt.Printf("writing %s at y %d\n", d.lines[i], y)
+		d.addLabel(0, y, string(d.lines[i][:]))
 	}
 	d.display()
 }
