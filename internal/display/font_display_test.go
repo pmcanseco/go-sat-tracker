@@ -2,27 +2,20 @@ package display
 
 import (
 	"image/color"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-func TestDisplay(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Display Suite")
-}
-
-var _ = Describe("Display Tests", func() {
-
+var _ = Describe("font display tests", func() {
 	Context("Line stack", func() {
 
 		It("prints are pushed onto the line stack", func() {
-			d := New(CustomDevice{
+			d := NewFontDisplay(CustomDevice{
 				PixelSetter: func(i int16, i2 int16, rgba color.RGBA) {},
 				Displayer:   func() error { return nil },
 				Clearer:     func() {},
-			}, 128, 32)
+			}, 128, 32, Consolas7pt)
 
 			hello := "hello"
 			d.Print(hello)

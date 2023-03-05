@@ -17,13 +17,7 @@ var (
 
 type PixelState color.RGBA
 
-type Device interface {
-	SetPixel(x, y int16, c PixelState)
-	Display() error
-	Clear()
-}
-
-type Display struct {
+type BitmapDisplay struct {
 	width, height int
 	rows, cols    int
 	img           draw.Image
@@ -31,8 +25,8 @@ type Display struct {
 	lines         [][]byte
 }
 
-func New(disp Device, width, height int) *Display {
-	d := Display{
+func New(disp Device, width, height int) *BitmapDisplay {
+	d := BitmapDisplay{
 		width:  width,
 		height: height,
 		rows:   height / 10, // font height
@@ -45,7 +39,7 @@ func New(disp Device, width, height int) *Display {
 	return &d
 }
 
-func (d *Display) addLabel(x, y int, label string) {
+func (d *BitmapDisplay) addLabel(x, y int, label string) {
 	point := fixed.Point26_6{X: fixed.I(x), Y: fixed.I(y)}
 
 	drawer := &font.Drawer{
@@ -57,13 +51,13 @@ func (d *Display) addLabel(x, y int, label string) {
 	drawer.DrawString(label)
 }
 
-func (d *Display) Print(s string) {
+func (d *BitmapDisplay) Print(s string) {
 	d.pushLines(s)
 	d.device.Clear()
 	d.update()
 }
 
-func (d *Display) PrintAt(line int, s string, clear bool) {
+func (d *BitmapDisplay) PrintAt(line int, s string, clear bool) {
 	if clear {
 		d.clear()
 	}
@@ -71,7 +65,7 @@ func (d *Display) PrintAt(line int, s string, clear bool) {
 	d.update()
 }
 
-func (d *Display) display() {
+func (d *BitmapDisplay) display() {
 	for j := int16(0); j < int16(d.height); j++ {
 		for i := int16(0); i < int16(d.width); i++ {
 			r, _, _, _ := d.img.At(int(i), int(j)).RGBA()
@@ -86,12 +80,12 @@ func (d *Display) display() {
 	_ = d.device.Display()
 }
 
-func (d *Display) clear() {
+func (d *BitmapDisplay) clear() {
 	d.lines = d.getNewLines()
 	d.device.Clear()
 }
 
-func (d *Display) update() {
+func (d *BitmapDisplay) update() {
 	d.img = image.NewRGBA(image.Rect(0, 0, d.width, d.height))
 	for y, i := d.height, len(d.lines)-1; y > 0; y, i = y-(10+i), i-1 { // 10 = font height
 		d.addLabel(0, y, string(d.lines[i][:]))
@@ -99,14 +93,14 @@ func (d *Display) update() {
 	d.display()
 }
 
-func (d *Display) pushLines(s string) {
+func (d *BitmapDisplay) pushLines(s string) {
 	for i := 0; i < len(d.lines)-1; i++ {
 		d.lines[i] = d.lines[i+1]
 	}
 	d.lines[len(d.lines)-1] = []byte(s)
 }
 
-func (d *Display) getNewLines() [][]byte {
+func (d *BitmapDisplay) getNewLines() [][]byte {
 	var out [][]byte
 	for i := 0; i < d.rows; i++ {
 		out = append(out, make([]byte, 0, d.cols))

@@ -2,6 +2,12 @@ package display
 
 import "image/color"
 
+type Device interface {
+	SetPixel(x, y int16, c PixelState)
+	Display() error
+	Clear()
+}
+
 var _ Device = (*CustomDevice)(nil)
 
 // CustomDevice is a customizable implementation of the Device interface.
