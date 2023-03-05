@@ -59,7 +59,7 @@ func main() {
 	oled.ClearDisplay()
 
 	d := getDevice(oled)
-	screen := display.New(d)
+	screen := display.New(d, 128, 32)
 
 	screen.Print("IDLE")
 	time.Sleep(2 * time.Second)
