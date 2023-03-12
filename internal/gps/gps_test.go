@@ -49,8 +49,8 @@ var _ = Describe("gps tests", func() {
 		})
 
 		It("gets a fix after a next sentence (read) error", func() {
-			sentenceQueue = append(sentenceQueue, "", "$GPGGA,210230,3855.4487,N,09446.0071,W,1,07,1.1,370.5,M,-29.5,M,,*7A")
-			errQueue := []error{errors.New("boom"), nil}
+			sentenceQueue = append(sentenceQueue, "", "", "$GPGGA,210230,3855.4487,N,09446.0071,W,1,07,1.1,370.5,M,-29.5,M,,*7A")
+			errQueue := []error{errors.New("boom"), errors.New("boom2"), nil}
 			mockReader = func() (string, error) {
 				outS := sentenceQueue[0]
 				sentenceQueue = sentenceQueue[1:]
@@ -58,6 +58,24 @@ var _ = Describe("gps tests", func() {
 				errQueue = errQueue[1:]
 				return outS, err
 			}
+			gps = New(mockReader)
+			err := gps.GetFix(context.Background())
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("gets a fix after seeing a sentence with no fix first", func() {
+			sentenceQueue = append(sentenceQueue,
+				"$GPGGA,210230,3855.4487,N,09446.0071,W,0,0,1.1,370.5,M,-29.5,M,,*7A",  // no fix
+				"$GPGGA,210230,3855.4487,N,09446.0071,W,1,07,1.1,370.5,M,-29.5,M,,*7A") // fix
+			errQueue := []error{nil, nil}
+			mockReader = func() (string, error) {
+				outS := sentenceQueue[0]
+				sentenceQueue = sentenceQueue[1:]
+				err := errQueue[0]
+				errQueue = errQueue[1:]
+				return outS, err
+			}
+			gps = New(mockReader)
 			err := gps.GetFix(context.Background())
 			Expect(err).ToNot(HaveOccurred())
 		})
