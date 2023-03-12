@@ -8,6 +8,7 @@ type Device interface {
 	Clear()
 }
 
+// compile-time interface satisfaction check
 var _ Device = (*CustomDevice)(nil)
 
 // CustomDevice is a customizable implementation of the Device interface.

@@ -9,6 +9,9 @@ type FontDisplay struct {
 	pixels        [][]bool
 }
 
+// compile-time interface satisfaction check
+var _ Printer = (*FontDisplay)(nil)
+
 func NewFontDisplay(disp Device, width, height int, font Font) *FontDisplay {
 	d := FontDisplay{
 		width:  width,

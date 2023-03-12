@@ -25,6 +25,9 @@ type BitmapDisplay struct {
 	lines         [][]byte
 }
 
+// compile-time interface satisfaction check
+var _ Printer = (*BitmapDisplay)(nil)
+
 func New(disp Device, width, height int) *BitmapDisplay {
 	d := BitmapDisplay{
 		width:  width,
