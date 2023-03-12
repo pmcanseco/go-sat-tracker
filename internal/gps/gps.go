@@ -1,7 +1,6 @@
 package gps
 
 import (
-	"fmt"
 	"time"
 
 	tinygoGPS "tinygo.org/x/drivers/gps"
@@ -50,6 +49,7 @@ func (gps *GPS) HasFix() bool {
 // (meters) in that order. It returns an error  if a GPS fix has yet to be acquired. In that case, call GetFix
 // first.
 func (gps *GPS) GetCoordinates() (time.Time, int16, float32, float32, int32) {
+	gps.GetFix()
 	return gps.lastFix.Time,
 		gps.lastFix.Satellites,
 		gps.lastFix.Latitude,
@@ -58,6 +58,7 @@ func (gps *GPS) GetCoordinates() (time.Time, int16, float32, float32, int32) {
 }
 
 func (gps *GPS) Time() time.Time {
+	gps.GetFix()
 	return gps.lastFix.Time
 }
 
@@ -120,7 +121,7 @@ func (gps *GPS) doGetFix(fixChan chan<- tinygoGPS.Fix) {
 			}
 		} else {
 			// no fix
-			gps.debug(fmt.Sprintf("NO FIX %d", i))
+			gps.debug("NO FIX")
 		}
 
 		time.Sleep(199 * time.Millisecond)
