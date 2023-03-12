@@ -28,7 +28,7 @@ type BitmapDisplay struct {
 // compile-time interface satisfaction check
 var _ Printer = (*BitmapDisplay)(nil)
 
-func New(disp Device, width, height int) *BitmapDisplay {
+func New(disp Device, width, height int) Printer {
 	d := BitmapDisplay{
 		width:  width,
 		height: height,

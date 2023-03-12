@@ -18,11 +18,12 @@ var _ = Describe("BitmapDisplay Tests", func() {
 	Context("Line stack", func() {
 
 		It("prints are pushed onto the line stack", func() {
-			d := New(CustomDevice{
+			p := New(CustomDevice{
 				PixelSetter: func(i int16, i2 int16, rgba color.RGBA) {},
 				Displayer:   func() error { return nil },
 				Clearer:     func() {},
 			}, 128, 32)
+			d := p.(*BitmapDisplay)
 
 			hello := "hello"
 			d.Print(hello)

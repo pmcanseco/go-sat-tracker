@@ -12,7 +12,7 @@ type FontDisplay struct {
 // compile-time interface satisfaction check
 var _ Printer = (*FontDisplay)(nil)
 
-func NewFontDisplay(disp Device, width, height int, font Font) *FontDisplay {
+func NewFontDisplay(disp Device, width, height int, font Font) Printer {
 	d := FontDisplay{
 		width:  width,
 		height: height,

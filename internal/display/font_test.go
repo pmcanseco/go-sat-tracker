@@ -69,11 +69,12 @@ var _ = Describe("Font Tests", func() {
 		})
 
 		It("displays on the pixel buffer", func() {
-			fd := NewFontDisplay(CustomDevice{
+			p := NewFontDisplay(CustomDevice{
 				PixelSetter: func(i int16, i2 int16, rgba color.RGBA) {},
 				Displayer:   func() error { return nil },
 				Clearer:     func() {},
 			}, 128, 32, Consolas8pt)
+			fd := p.(*FontDisplay)
 
 			fd.addLabel(0, 0, "hello!yy")
 			fd.addLabel(0, 11, "world? f")
@@ -137,11 +138,12 @@ var _ = Describe("Font Tests", func() {
 		})
 
 		It("displays on the pixel buffer", func() {
-			fd := NewFontDisplay(CustomDevice{
+			p := NewFontDisplay(CustomDevice{
 				PixelSetter: func(i int16, i2 int16, rgba color.RGBA) {},
 				Displayer:   func() error { return nil },
 				Clearer:     func() {},
 			}, 128, 32, Consolas7pt)
+			fd := p.(*FontDisplay)
 
 			fd.addLabel(0, 0, "why, hello there overflow test")
 			fd.addLabel(0, 9, "GOLANg world!")

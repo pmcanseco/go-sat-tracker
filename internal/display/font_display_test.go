@@ -11,11 +11,12 @@ var _ = Describe("font display tests", func() {
 	Context("Line stack", func() {
 
 		It("prints are pushed onto the line stack", func() {
-			d := NewFontDisplay(CustomDevice{
+			p := NewFontDisplay(CustomDevice{
 				PixelSetter: func(i int16, i2 int16, rgba color.RGBA) {},
 				Displayer:   func() error { return nil },
 				Clearer:     func() {},
 			}, 128, 32, Consolas7pt)
+			d := p.(*FontDisplay)
 
 			hello := "hello"
 			d.Print(hello)
