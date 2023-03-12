@@ -89,7 +89,6 @@ func (gps *GPS) doGetFix(fixChan chan<- tinygoGPS.Fix) {
 		if err != nil {
 			// next sentence error
 			gps.debug("NXT SNTC ERR")
-			time.Sleep(1 * time.Second)
 			continue
 		}
 
@@ -97,7 +96,6 @@ func (gps *GPS) doGetFix(fixChan chan<- tinygoGPS.Fix) {
 		if parseErr != nil {
 			// parse error
 			gps.debug("PARSE ERR")
-			time.Sleep(1 * time.Second)
 			continue
 		}
 
