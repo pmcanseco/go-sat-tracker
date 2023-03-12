@@ -1,9 +1,7 @@
 package satellite
 
 import (
-	"fmt"
 	"math"
-	"os"
 	"time"
 
 	gosat "github.com/pmcanseco/go-satellite"
@@ -41,28 +39,6 @@ func NewSatellite(line1, line2 string, gravityConstant gosat.Gravity) *Satellite
 	}
 
 	return &Satellite{sat: *sat}
-}
-
-func NewSatelliteFromID(noradID uint64) *Satellite {
-	sat := getSatelliteFromSpaceTrack(noradID)
-	fmt.Printf("Fetched TLE:\n  %s\n  %s\n", sat.sat.Line1, sat.sat.Line2)
-	return &sat
-}
-
-func getSatelliteFromSpaceTrack(noradID uint64) Satellite {
-	username := os.Getenv("SPACETRACK_USERNAME")
-	password := os.Getenv("SPACETRACK_PASSWORD")
-	spacetrack := gosat.NewSpacetrack(username, password)
-
-	sat, err := spacetrack.GetTLE(noradID, time.Now(), gosat.GravityWGS84)
-	if err != nil {
-		panic(err)
-	}
-
-	return Satellite{
-		noradID: noradID,
-		sat:     sat,
-	}
 }
 
 // getTime returns the individual components of a time.Time for use in the go-satellite library
