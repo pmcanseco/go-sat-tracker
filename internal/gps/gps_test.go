@@ -1,7 +1,6 @@
 package gps
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -34,18 +33,20 @@ var _ = Describe("gps tests", func() {
 			gps = New(mockReader)
 		})
 
+		AfterEach(func() {
+			gps.quit = true
+		})
+
 		It("gets a fix immediately", func() {
 			sentenceQueue = append(sentenceQueue, "$GPGGA,210230,3855.4487,N,09446.0071,W,1,07,1.1,370.5,M,-29.5,M,,*7A")
-			err := gps.GetFix(context.Background())
-			Expect(err).ToNot(HaveOccurred())
+			gps.GetFix()
 		})
 
 		It("gets a fix after a parse error", func() {
 			sentenceQueue = append(sentenceQueue,
 				"$GPGGA,210230,3855.4487,N,0970.5,M,-29.5,M,,*7A", // bad sentence
 				"$GPGGA,210230,3855.4487,N,09446.0071,W,1,07,1.1,370.5,M,-29.5,M,,*7A")
-			err := gps.GetFix(context.Background())
-			Expect(err).ToNot(HaveOccurred())
+			gps.GetFix()
 		})
 
 		It("gets a fix after a next sentence (read) error", func() {
@@ -59,8 +60,7 @@ var _ = Describe("gps tests", func() {
 				return outS, err
 			}
 			gps = New(mockReader)
-			err := gps.GetFix(context.Background())
-			Expect(err).ToNot(HaveOccurred())
+			gps.GetFix()
 		})
 
 		It("gets a fix after seeing a sentence with no fix first", func() {
@@ -76,16 +76,7 @@ var _ = Describe("gps tests", func() {
 				return outS, err
 			}
 			gps = New(mockReader)
-			err := gps.GetFix(context.Background())
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("errors out after the context is cancelled or expires", func() {
-			// intentionally not populate the sentence queue so it will hang forever reading from it
-			ctx, cancel := context.WithCancel(context.Background())
-			cancel()
-			err := gps.GetFix(ctx)
-			Expect(err).To(HaveOccurred())
+			gps.GetFix()
 		})
 	})
 })

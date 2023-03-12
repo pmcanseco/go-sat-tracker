@@ -1,8 +1,6 @@
 package gps
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -14,10 +12,12 @@ type SentenceGetter func() (string, error)
 type GPS struct {
 	read      SentenceGetter
 	parser    tinygoGPS.Parser
-	debugMode bool
 	doDebug   func(string)
 	quit      bool
+	isRunning bool
 	hasFix    bool
+	lastFix   tinygoGPS.Fix
+	fixes     <-chan tinygoGPS.Fix
 	time      time.Time
 	numSats   int16
 	lat       float32
@@ -33,12 +33,11 @@ func New(reader SentenceGetter) *GPS {
 }
 
 func (gps *GPS) SetDebug(d func(string)) {
-	gps.debugMode = true
 	gps.doDebug = d
 }
 
 func (gps *GPS) debug(s string) {
-	if gps.debugMode {
+	if gps.doDebug != nil {
 		gps.doDebug(s)
 	}
 }
@@ -50,38 +49,43 @@ func (gps *GPS) HasFix() bool {
 // GetCoordinates returns the time, number of satellites, latitude (degrees), longitude (degrees), and altitude
 // (meters) in that order. It returns an error  if a GPS fix has yet to be acquired. In that case, call GetFix
 // first.
-func (gps *GPS) GetCoordinates() (time.Time, int16, float32, float32, int32, error) {
-	if !gps.hasFix {
-		return time.Time{}, 0, 0, 0, 0, errors.New("no gps fix")
-	}
-	return gps.time, gps.numSats, gps.lat, gps.lon, gps.alt, nil
+func (gps *GPS) GetCoordinates() (time.Time, int16, float32, float32, int32) {
+	return gps.lastFix.Time,
+		gps.lastFix.Satellites,
+		gps.lastFix.Latitude,
+		gps.lastFix.Longitude,
+		gps.lastFix.Altitude
 }
 
-func (gps *GPS) GetFix(ctx context.Context) error {
-	fixChan := make(chan tinygoGPS.Fix)
-	go gps.doGetFix(fixChan)
+func (gps *GPS) Time() time.Time {
+	return gps.lastFix.Time
+}
+
+func (gps *GPS) FixChan() <-chan tinygoGPS.Fix {
+	return gps.fixes
+}
+
+func (gps *GPS) GetFix() {
+	if !gps.isRunning {
+		fixChan := make(chan tinygoGPS.Fix)
+		gps.fixes = fixChan
+		go gps.doGetFix(fixChan)
+	}
 
 	for {
 		select {
-		case <-ctx.Done():
-			gps.quit = true // quit the get-fix goroutine
-			return ctx.Err()
-		case fix := <-fixChan:
+		case <-gps.fixes:
 			gps.hasFix = true
-			gps.time = fix.Time
-			gps.numSats = fix.Satellites
-			gps.alt = fix.Altitude
-			gps.lat = fix.Latitude
-			gps.lon = fix.Longitude
-			gps.quit = true // quit the get-fix goroutine
-			return nil
+			return
 		}
 	}
 }
 
 func (gps *GPS) doGetFix(fixChan chan<- tinygoGPS.Fix) {
+	gps.isRunning = true
 	for i := 0; ; i++ {
 		if gps.quit {
+			gps.isRunning = false
 			return
 		}
 
@@ -89,6 +93,7 @@ func (gps *GPS) doGetFix(fixChan chan<- tinygoGPS.Fix) {
 		if err != nil {
 			// next sentence error
 			gps.debug("NXT SNTC ERR")
+			time.Sleep(1 * time.Millisecond)
 			continue
 		}
 
@@ -96,24 +101,28 @@ func (gps *GPS) doGetFix(fixChan chan<- tinygoGPS.Fix) {
 		if parseErr != nil {
 			// parse error
 			gps.debug("PARSE ERR")
+			time.Sleep(1 * time.Millisecond)
 			continue
 		}
 
 		if fix.Valid {
-			gps.debug("FIX!")
+			//gps.debug("FIX!")
+			gps.lastFix = fix
 
 			// sometimes we have a valid fix but satellites is 0, avoid that case
 			if fix.Satellites != 0 {
+				gps.numSats = fix.Satellites
+				gps.alt = fix.Altitude
+				gps.lat = fix.Latitude
+				gps.lon = fix.Longitude
 				gps.debug("SATS>0,DONE")
 				fixChan <- fix
-				return
 			}
 		} else {
 			// no fix
 			gps.debug(fmt.Sprintf("NO FIX %d", i))
-			time.Sleep(2 * time.Second)
 		}
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(199 * time.Millisecond)
 	}
 }
