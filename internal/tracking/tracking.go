@@ -40,27 +40,27 @@ func NewTracker(sat *satellite.Satellite, observer satellite.Coordinates) Tracke
 		satellite:      sat,
 		location:       observer,
 		latestPlanTime: time.Now(),
-		plan: sat.Plan(observer, 10, 45,
-			time.Now(), time.Now().Add(7*24*time.Hour), time.Second),
+		//plan: sat.Plan(observer, 10, 45,
+		//	time.Now(), time.Now().Add(7*24*time.Hour), time.Second),
 		mode: idle,
 	}
 
 	// make a fake pass that starts in 5 seconds and put it at the beginning for easier testing
-	fakePass := t.plan[0].CopyPassStartingAt(time.Now().Add(5*time.Second), time.Second)
-	newPlan := []satellite.Pass{fakePass}
-	newPlan = append(newPlan, t.plan...)
-	t.plan = newPlan
+	//fakePass := t.plan[0].CopyPassStartingAt(time.Now().Add(5*time.Second), time.Second)
+	//newPlan := []satellite.Pass{fakePass}
+	//newPlan = append(newPlan, t.plan...)
+	//t.plan = newPlan
 
 	//fakePass.CoarsePrintPath()
 
-	t.populatedPlanLen = len(t.plan)
+	//t.populatedPlanLen = len(t.plan)
 
-	fmt.Printf("Populated %d passes:\n", t.populatedPlanLen)
-	for _, p := range t.plan {
-		fmt.Printf("  Start: %s, Max Elevation: %d\n",
-			p.GetStartTime().Format(timeLayout),
-			p.GetMaxElevation())
-	}
+	//fmt.Printf("Populated %d passes:\n", t.populatedPlanLen)
+	//for _, p := range t.plan {
+	//	fmt.Printf("  Start: %s, Max Elevation: %d\n",
+	//		p.GetStartTime().Format(timeLayout),
+	//		p.GetMaxElevation())
+	//}
 
 	return t
 }
