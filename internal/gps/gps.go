@@ -106,9 +106,10 @@ func (gps *GPS) doGetFix(fixChan chan<- tinygoGPS.Fix) {
 			continue
 		}
 
+		gps.lastFix = fix
+
 		if fix.Valid {
 			//gps.debug("FIX!")
-			gps.lastFix = fix
 
 			// sometimes we have a valid fix but satellites is 0, avoid that case
 			if fix.Satellites != 0 {

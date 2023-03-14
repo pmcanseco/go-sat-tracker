@@ -63,6 +63,16 @@ var _ = Describe("gps tests", func() {
 			gps.GetFix()
 		})
 
+		PIt("parses rmc sentences in order to get the date", func() {
+			sentenceQueue = append(sentenceQueue,
+				"$GPRMC,201640.00,A,3933.29994,N,10448.37680,W,0.564,,120323,,,A*63",
+				"$GPGGA,210230,3855.4487,N,09446.0071,W,1,07,1.1,370.5,M,-29.5,M,,*7A")
+			gps.GetFix()
+			Expect(gps.lastFix.Time.Month()).To(Equal(3))
+			Expect(gps.lastFix.Time.Day()).To(Equal(12))
+			Expect(gps.lastFix.Time.Year()).To(Equal(2023))
+		})
+
 		It("gets a fix after seeing a sentence with no fix first", func() {
 			sentenceQueue = append(sentenceQueue,
 				"$GPGGA,210230,3855.4487,N,09446.0071,W,0,0,1.1,370.5,M,-29.5,M,,*7A",  // no fix
