@@ -2,6 +2,11 @@ package display
 
 import "image/color"
 
+type Printer interface {
+	Print(s string)
+	PrintAt(line int, s string, clear bool)
+}
+
 type Device interface {
 	SetPixel(x, y int16, c PixelState)
 	Display() error
