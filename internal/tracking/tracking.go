@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pmcanseco/go-sat-tracker/internal/satellite"
+	tinyTime "github.com/pmcanseco/go-sat-tracker/internal/time"
 )
 
 type Tracker interface {
@@ -39,28 +40,25 @@ func NewTracker(sat *satellite.Satellite, observer satellite.Coordinates) Tracke
 	t := &Track{
 		satellite:      sat,
 		location:       observer,
-		latestPlanTime: time.Now(),
-		//plan: sat.Plan(observer, 10, 45,
-		//	time.Now(), time.Now().Add(7*24*time.Hour), time.Second),
+		latestPlanTime: tinyTime.GetTime(),
+		plan: sat.Plan(observer, 10, 45,
+			tinyTime.GetTime(), tinyTime.GetTime().Add(7*24*time.Hour), time.Second),
 		mode: idle,
 	}
 
 	// make a fake pass that starts in 5 seconds and put it at the beginning for easier testing
-	//fakePass := t.plan[0].CopyPassStartingAt(time.Now().Add(5*time.Second), time.Second)
-	//newPlan := []satellite.Pass{fakePass}
-	//newPlan = append(newPlan, t.plan...)
-	//t.plan = newPlan
+	fakePass := t.plan[0].CopyPassStartingAt(tinyTime.GetTime().Add(5*time.Second), time.Second)
+	newPlan := []satellite.Pass{fakePass}
+	newPlan = append(newPlan, t.plan...)
+	t.plan = newPlan
+	t.populatedPlanLen = len(t.plan)
 
-	//fakePass.CoarsePrintPath()
-
-	//t.populatedPlanLen = len(t.plan)
-
-	//fmt.Printf("Populated %d passes:\n", t.populatedPlanLen)
-	//for _, p := range t.plan {
-	//	fmt.Printf("  Start: %s, Max Elevation: %d\n",
-	//		p.GetStartTime().Format(timeLayout),
-	//		p.GetMaxElevation())
-	//}
+	fmt.Printf("Populated %d passes:\n", t.populatedPlanLen)
+	for _, p := range t.plan {
+		fmt.Printf("  Start: %s, Max Elevation: %d\n",
+			p.GetStartTime().Format(timeLayout),
+			p.GetMaxElevation())
+	}
 
 	return t
 }
@@ -114,16 +112,16 @@ func (t *Track) Track(ctx context.Context) {
 				}
 				fmt.Printf("waiting %s ...\n", d.String())
 				time.Sleep(d)
-				if t.currentPass.IsTimeWithinPass(time.Now()) {
+				if t.currentPass.IsTimeWithinPass(tinyTime.GetTime()) {
 					t.mode = tracking
 					fmt.Println("switched to tracking mode")
 				}
 
 			case tracking:
-				now := getTiming(time.Now())
+				now := getTiming(tinyTime.GetTime())
 				la := t.currentPass.GetLookAngle(time.Since(t.currentPass.GetStartTime())) //.Round(time.Second))
 				if la != nil {
-					fmt.Printf("Tracking - %01d:%01d:%01d \t Az: %.1f \t El: %.1f \n", now.Hour, now.Minute, now.Second, la.AzimuthDegrees, la.ElevationDegrees)
+					fmt.Printf("Tracking - %02d:%02d:%02d \t Az: %.1f \t El: %.1f \n", now.Hour, now.Minute, now.Second, la.AzimuthDegrees, la.ElevationDegrees)
 				}
 
 				if len(t.currentPass.FullPath) == 0 || time.Since(t.currentPass.GetEndTime()) > 0 {

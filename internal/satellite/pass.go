@@ -2,6 +2,8 @@ package satellite
 
 import (
 	"time"
+
+	tinyTime "github.com/pmcanseco/go-sat-tracker/internal/time"
 )
 
 type Pass struct {
@@ -99,7 +101,7 @@ func (p *Pass) GetLookAngle(d time.Duration) *LookAngles {
 		laat := p.FullPath[0]
 		p.FullPath = p.FullPath[1:]
 
-		if time.Until(time.Now().Add(d)) > 0 {
+		if time.Until(tinyTime.GetTime().Add(d)) > 0 {
 			return &laat.LookAngles
 		}
 	}
