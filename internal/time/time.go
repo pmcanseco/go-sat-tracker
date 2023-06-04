@@ -8,17 +8,21 @@ import "time"
 // is to set the time from a GPS module and then use the monotonic clock to retrieve the current time after that.
 
 var (
-	millisWhenTimeWasSet int64
-	wallClock            time.Time
-	unixMillisGetter     = func() int64 { return time.Now().UnixMilli() }
+	nanosWhenTimeWasSet int64
+	wallClock           time.Time
+	unixNanosGetter     = func() int64 { return time.Now().UTC().UnixNano() }
 )
 
 func SetTime(t time.Time) {
-	millisWhenTimeWasSet = unixMillisGetter()
-	wallClock = t
+	nanosWhenTimeWasSet = unixNanosGetter()
+	wallClock = t.UTC()
 }
 
 func GetTime() time.Time {
-	elapsedMillis := unixMillisGetter() - millisWhenTimeWasSet
-	return wallClock.Add(time.Millisecond * time.Duration(elapsedMillis))
+	if wallClock.IsZero() {
+		panic("time was not set")
+	}
+
+	elapsedNanos := unixNanosGetter() - nanosWhenTimeWasSet
+	return wallClock.Add(time.Nanosecond * time.Duration(elapsedNanos))
 }
