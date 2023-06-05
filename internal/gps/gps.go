@@ -1,6 +1,7 @@
 package gps
 
 import (
+	"sync"
 	"time"
 
 	tinygoGPS "tinygo.org/x/drivers/gps"
@@ -18,6 +19,9 @@ type GPS struct {
 	lastFix   tinygoGPS.Fix
 	fixes     <-chan tinygoGPS.Fix
 	time      time.Time
+	timeSet   bool
+	dateSet   bool
+	timeMutex sync.Mutex
 	numSats   int16
 	lat       float32
 	lon       float32
@@ -59,7 +63,13 @@ func (gps *GPS) GetCoordinates() (time.Time, int16, float32, float32, int32) {
 
 func (gps *GPS) Time() time.Time {
 	gps.GetFix()
-	return gps.lastFix.Time
+	for !gps.dateSet || !gps.timeSet {
+	}
+
+	gps.timeMutex.Lock()
+	t := gps.time
+	gps.timeMutex.Unlock()
+	return t
 }
 
 func (gps *GPS) FixChan() <-chan tinygoGPS.Fix {
@@ -106,20 +116,21 @@ func (gps *GPS) doGetFix(fixChan chan<- tinygoGPS.Fix) {
 			continue
 		}
 
-		gps.lastFix = fix
-
 		if fix.Valid {
-			//gps.debug("FIX!")
+			gps.debug("FIX!")
 
-			// sometimes we have a valid fix but satellites is 0, avoid that case
+			gps.alt = fix.Altitude
+			gps.lat = fix.Latitude
+			gps.lon = fix.Longitude
+			gps.setDate(fix)
+			gps.setTime(fix)
+
 			if fix.Satellites != 0 {
 				gps.numSats = fix.Satellites
-				gps.alt = fix.Altitude
-				gps.lat = fix.Latitude
-				gps.lon = fix.Longitude
-				gps.debug("SATS>0,DONE")
-				fixChan <- fix
 			}
+
+			gps.lastFix = fix
+			fixChan <- fix
 		} else {
 			// no fix
 			gps.debug("NO FIX")
@@ -127,4 +138,20 @@ func (gps *GPS) doGetFix(fixChan chan<- tinygoGPS.Fix) {
 
 		time.Sleep(199 * time.Millisecond)
 	}
+}
+
+func (gps *GPS) setDate(fix tinygoGPS.Fix) {
+	if gps.time.Year() == 1 {
+		gps.timeMutex.Lock()
+		gps.time = time.Date(fix.Time.Year(), fix.Time.Month(), fix.Time.Day(), 0, 0, 0, 0, time.UTC)
+		gps.dateSet = true
+		gps.timeMutex.Unlock()
+	}
+}
+
+func (gps *GPS) setTime(fix tinygoGPS.Fix) {
+	gps.timeMutex.Lock()
+	gps.timeSet = true
+	gps.time = time.Date(gps.time.Year(), gps.time.Month(), gps.time.Day(), fix.Time.Hour(), fix.Time.Minute(), fix.Time.Second(), 0, time.UTC)
+	gps.timeMutex.Unlock()
 }
