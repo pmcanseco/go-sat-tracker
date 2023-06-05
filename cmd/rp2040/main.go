@@ -1,20 +1,23 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"image/color"
 	"machine"
 	"time"
 
-	"github.com/pmcanseco/go-sat-tracker/internal/tracking"
-
-	"github.com/pmcanseco/go-sat-tracker/internal/satellite"
 	gosat "github.com/pmcanseco/go-satellite"
+	tinygoGPS "tinygo.org/x/drivers/gps"
+	"tinygo.org/x/drivers/ssd1306"
 
 	"github.com/pmcanseco/go-sat-tracker/internal/display"
 	gpsDevice "github.com/pmcanseco/go-sat-tracker/internal/gps"
-	tinygoGPS "tinygo.org/x/drivers/gps"
-	"tinygo.org/x/drivers/ssd1306"
+	"github.com/pmcanseco/go-sat-tracker/internal/motors"
+	"github.com/pmcanseco/go-sat-tracker/internal/satellite"
+	"github.com/pmcanseco/go-sat-tracker/internal/steppermotor"
+	tinyTime "github.com/pmcanseco/go-sat-tracker/internal/time"
+	"github.com/pmcanseco/go-sat-tracker/internal/tracking"
 )
 
 var (
@@ -60,28 +63,28 @@ func main() {
 		//_ = neopixel.WriteColors(npRed)
 	}
 
-	oled := ssd1306.NewI2C(i2c)
-	oled.Configure(ssd1306.Config{
-		Address: 0x3C,
-		Width:   128,
-		Height:  32,
-	})
-	oled.ClearDisplay()
+	//oled := ssd1306.NewI2C(i2c)
+	//oled.Configure(ssd1306.Config{
+	//	Address: 0x3C,
+	//	Width:   128,
+	//	Height:  32,
+	//})
+	//oled.ClearDisplay()
 
-	d := getDevice(oled)
-	wipeAnimation := display.NewWipeAnimation(d)
-	wipeAnimation.Run()
+	//d := getDevice(oled)
+	//wipeAnimation := display.NewWipeAnimation(d)
+	//wipeAnimation.Run()
 
-	screen := display.NewFontDisplay(d, 128, 32, display.Consolas7pt)
+	//screen := display.NewFontDisplay(d, 128, 32, display.Consolas7pt)
 
-	screen.Print("IDLE")
-	time.Sleep(1 * time.Second)
-	screen.Print("WAITPASS")
-	time.Sleep(1 * time.Second)
-	screen.Print("TRACK AZ:150 EL:30")
-	time.Sleep(1 * time.Second)
-	screen.Print("TRACKING COMPLETE")
-	time.Sleep(1 * time.Second)
+	//screen.Print("IDLE")
+	//time.Sleep(1 * time.Second)
+	//screen.Print("WAITPASS")
+	//time.Sleep(1 * time.Second)
+	//screen.Print("TRACK AZ:150 EL:30")
+	//time.Sleep(1 * time.Second)
+	//screen.Print("TRACKING COMPLETE")
+	//time.Sleep(1 * time.Second)
 
 	_ = machine.UART1.Configure(machine.UARTConfig{
 		BaudRate: 9600,
@@ -97,12 +100,14 @@ func main() {
 
 	print("hello world!!!\n")
 
-	screen.Print("GETTING FIX")
+	print("GETTING FIX")
 	//gps.SetDebug(screen.Print)
 	gps.GetFix()
-	screen.Print("GOT FIX!")
+	print("GOT FIX!")
 	gps.SetDebug(nil)
-	_, _, lat, lon, alt := gps.GetCoordinates()
+	now, _, lat, lon, alt := gps.GetCoordinates()
+	now = gps.Time()
+	tinyTime.SetTime(now)
 
 	tracker := tracking.NewTracker(
 		satellite.NewSatellite(
@@ -113,15 +118,16 @@ func main() {
 			LatitudeDegrees:  float64(lat),
 			LongitudeDegrees: float64(lon),
 			AltitudeKM:       float64(alt / 1000),
-		})
-	//go tracker.Track(context.Background())
-	tracker = tracker
+		},
+		tracking.WithMotors(nil, motors.New(getElevationMotor())))
+	go tracker.Track(context.Background())
+	//tracker = tracker
 
-	print("hello world 2 !!!\n")
+	//print("hello world 2 !!!\n")
 
 	for {
 		ts, numSats, lat, lon, alt := gps.GetCoordinates()
-		printGPS(screen, ts, numSats, lat, lon, alt)
+		printGPS(nil, ts, numSats, lat, lon, alt)
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -135,23 +141,46 @@ func getDevice(device ssd1306.Device) display.Device {
 }
 
 func printGPS(printer display.Printer, ts time.Time, numSats int16, lat, lon float32, alt int32) {
-	//println(fmt.Sprintf("%s/%s %s lat %.2f lon %.2f alt %d sats %d",
-	//	month, day, ts.Format(time.RFC1123), lat, lon, alt, numSats))
-	printer.PrintAt(
-		0,
-		fmt.Sprintf("%s SATS:%d",
-			ts.Format("01/02 15:04:05"),
-			numSats),
-		false)
-	printer.PrintAt(
-		1,
-		fmt.Sprintf("LON:%.3f",
-			lon),
-		false)
-	printer.PrintAt(
-		2,
-		fmt.Sprintf("LAT:%.3f @%dM",
-			lat,
-			alt),
-		false)
+	println(fmt.Sprintf("%s lat %.2f lon %.2f alt %d sats %d",
+		ts.Format(time.RFC1123), lat, lon, alt, numSats))
+	//printer.PrintAt(
+	//	0,
+	//	fmt.Sprintf("%s SATS:%d",
+	//		ts.Format("01/02 15:04:05"),
+	//		numSats),
+	//	false)
+	//printer.PrintAt(
+	//	1,
+	//	fmt.Sprintf("LON:%.3f",
+	//		lon),
+	//	false)
+	//printer.PrintAt(
+	//	2,
+	//	fmt.Sprintf("LAT:%.3f @%dM",
+	//		lat,
+	//		alt),
+	//	false)
+}
+
+func getElevationMotor() *steppermotor.Device {
+	dir := machine.GPIO10
+	dir.Configure(machine.PinConfig{Mode: machine.PinOutput})
+	dir.High()
+
+	step := machine.GPIO9
+	step.Configure(machine.PinConfig{Mode: machine.PinOutput})
+	step.Low()
+
+	sleep := machine.GPIO8
+	sleep.Configure(machine.PinConfig{Mode: machine.PinOutput})
+	sleep.Low()
+
+	sm := steppermotor.New(steppermotor.DeviceConfig{
+		StepPin:   step,
+		DirPin:    dir,
+		SleepPin:  sleep,
+		StepCount: 200,
+		RPM:       50,
+	})
+	return sm
 }

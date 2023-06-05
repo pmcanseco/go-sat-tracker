@@ -9,6 +9,10 @@ import (
 	tinyTime "github.com/pmcanseco/go-sat-tracker/internal/time"
 )
 
+type Angler interface {
+	CommandAngle(angleDegrees float64)
+}
+
 type Tracker interface {
 	Track(context.Context)
 }
@@ -21,6 +25,8 @@ type Track struct {
 	latestPlanTime   time.Time
 	mode             mode
 	currentPass      satellite.Pass
+	azimuthMotor     Angler
+	elevationMotor   Angler
 }
 
 type mode int
@@ -36,7 +42,7 @@ const (
 	timeLayout = "02 Jan 15:04:05 MST"
 )
 
-func NewTracker(sat *satellite.Satellite, observer satellite.Coordinates) Tracker {
+func NewTracker(sat *satellite.Satellite, observer satellite.Coordinates, opts ...func(*Track)) Tracker {
 	t := &Track{
 		satellite:      sat,
 		location:       observer,
@@ -44,6 +50,10 @@ func NewTracker(sat *satellite.Satellite, observer satellite.Coordinates) Tracke
 		plan: sat.Plan(observer, 10, 45,
 			tinyTime.GetTime(), tinyTime.GetTime().Add(7*24*time.Hour), time.Second),
 		mode: idle,
+	}
+
+	for _, o := range opts {
+		o(t)
 	}
 
 	// make a fake pass that starts in 5 seconds and put it at the beginning for easier testing
@@ -61,6 +71,13 @@ func NewTracker(sat *satellite.Satellite, observer satellite.Coordinates) Tracke
 	}
 
 	return t
+}
+
+func WithMotors(az, el Angler) func(*Track) {
+	return func(t *Track) {
+		t.azimuthMotor = az
+		t.elevationMotor = el
+	}
 }
 
 // if the plan has fewer items than the last time it was populated, re-populate it with another day's worth of passes
@@ -122,6 +139,12 @@ func (t *Track) Track(ctx context.Context) {
 				la := t.currentPass.GetLookAngle(time.Since(t.currentPass.GetStartTime())) //.Round(time.Second))
 				if la != nil {
 					dualLog("Tracking - %02d:%02d:%02d \t Az: %.1f \t El: %.1f \n", now.Hour, now.Minute, now.Second, la.AzimuthDegrees, la.ElevationDegrees)
+					if t.azimuthMotor != nil {
+						t.azimuthMotor.CommandAngle(la.AzimuthDegrees)
+					}
+					if t.elevationMotor != nil {
+						t.elevationMotor.CommandAngle(la.ElevationDegrees)
+					}
 				}
 
 				if len(t.currentPass.FullPath) == 0 || time.Since(t.currentPass.GetEndTime()) > 0 {
