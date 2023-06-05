@@ -53,9 +53,9 @@ func NewTracker(sat *satellite.Satellite, observer satellite.Coordinates) Tracke
 	t.plan = newPlan
 	t.populatedPlanLen = len(t.plan)
 
-	fmt.Printf("Populated %d passes:\n", t.populatedPlanLen)
+	dualLog("Populated %d passes:\n", t.populatedPlanLen)
 	for _, p := range t.plan {
-		fmt.Printf("  Start: %s, Max Elevation: %d\n",
+		dualLog("  Start: %s, Max Elevation: %d\n",
 			p.GetStartTime().Format(timeLayout),
 			p.GetMaxElevation())
 	}
@@ -86,7 +86,7 @@ func (t *Track) dequeuePass() *satellite.Pass {
 
 // Track grab the current time, figure out where we should be looking at
 func (t *Track) Track(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 
 	for {
 		select {
@@ -96,7 +96,7 @@ func (t *Track) Track(ctx context.Context) {
 
 			switch t.mode {
 			case idle:
-				fmt.Printf("%s \t Mode: %d - Idle\n", tick.Format(timeLayout), t.mode)
+				dualLog("%s \t Mode: %d - Idle\n", tick.Format(timeLayout), t.mode)
 				p := t.dequeuePass()
 				if p != nil {
 					t.currentPass = *p
@@ -104,13 +104,13 @@ func (t *Track) Track(ctx context.Context) {
 				}
 
 			case awaitingPass:
-				fmt.Printf("%s \t Mode: %d - Awaiting Pass: %s to %s\n",
+				dualLog("%s \t Mode: %d - Awaiting Pass: %s to %s\n",
 					tick.Format(timeLayout), t.mode, t.currentPass.GetStartTime().Format(timeLayout), t.currentPass.GetEndTime().Format(timeLayout))
 				d := time.Second
 				if time.Until(t.currentPass.GetStartTime()) > 2*time.Minute {
 					d = time.Until(t.currentPass.GetStartTime().Add(-1 * time.Minute))
 				}
-				fmt.Printf("waiting %s ...\n", d.String())
+				dualLog("waiting %s ...\n", d.String())
 				time.Sleep(d)
 				if t.currentPass.IsTimeWithinPass(tinyTime.GetTime()) {
 					t.mode = tracking
@@ -121,7 +121,7 @@ func (t *Track) Track(ctx context.Context) {
 				now := getTiming(tinyTime.GetTime())
 				la := t.currentPass.GetLookAngle(time.Since(t.currentPass.GetStartTime())) //.Round(time.Second))
 				if la != nil {
-					fmt.Printf("Tracking - %02d:%02d:%02d \t Az: %.1f \t El: %.1f \n", now.Hour, now.Minute, now.Second, la.AzimuthDegrees, la.ElevationDegrees)
+					dualLog("Tracking - %02d:%02d:%02d \t Az: %.1f \t El: %.1f \n", now.Hour, now.Minute, now.Second, la.AzimuthDegrees, la.ElevationDegrees)
 				}
 
 				if len(t.currentPass.FullPath) == 0 || time.Since(t.currentPass.GetEndTime()) > 0 {
@@ -130,7 +130,7 @@ func (t *Track) Track(ctx context.Context) {
 				}
 
 			case trackingComplete:
-				fmt.Printf("%s \t Mode: %d Tracking Complete\n", tick.Format(timeLayout), t.mode)
+				dualLog("%s \t Mode: %d Tracking Complete\n", tick.Format(timeLayout), t.mode)
 				if len(t.plan) < 3 {
 					fmt.Println("populating plan to fetch more passes...")
 					t.populatePlan()
@@ -149,4 +149,9 @@ func getTiming(t time.Time) satellite.Timing {
 		Minute: t.Minute(),
 		Second: t.Second(),
 	}
+}
+
+func dualLog(s string, args ...interface{}) {
+	fmt.Printf(s, args...)
+	print(fmt.Sprintf(s, args...))
 }
