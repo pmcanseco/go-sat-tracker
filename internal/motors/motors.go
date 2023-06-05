@@ -1,6 +1,8 @@
 package motors
 
-import "math"
+import (
+	"math"
+)
 
 const DefaultDegreesPerStep = 1.8
 
