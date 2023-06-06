@@ -1,7 +1,6 @@
 package gps
 
 import (
-	"sync"
 	"time"
 
 	tinygoGPS "tinygo.org/x/drivers/gps"
@@ -21,11 +20,12 @@ type GPS struct {
 	time      time.Time
 	timeSet   bool
 	dateSet   bool
-	timeMutex sync.Mutex
-	numSats   int16
-	lat       float32
-	lon       float32
-	alt       int32 // meters
+	//timeMutex sync.Mutex
+	numSats int16
+	lat     float32
+	lon     float32
+	alt     int32 // meters
+	//altSet  bool
 }
 
 func New(reader SentenceGetter) *GPS {
@@ -45,10 +45,6 @@ func (gps *GPS) debug(s string) {
 	}
 }
 
-func (gps *GPS) HasFix() bool {
-	return gps.hasFix
-}
-
 // GetCoordinates returns the time, number of satellites, latitude (degrees), longitude (degrees), and altitude
 // (meters) in that order. It returns an error  if a GPS fix has yet to be acquired. In that case, call GetFix
 // first.
@@ -66,14 +62,10 @@ func (gps *GPS) Time() time.Time {
 	for !gps.dateSet || !gps.timeSet {
 	}
 
-	gps.timeMutex.Lock()
+	//gps.timeMutex.Lock()
 	t := gps.time
-	gps.timeMutex.Unlock()
+	//gps.timeMutex.Unlock()
 	return t
-}
-
-func (gps *GPS) FixChan() <-chan tinygoGPS.Fix {
-	return gps.fixes
 }
 
 func (gps *GPS) GetFix() {
@@ -142,16 +134,20 @@ func (gps *GPS) doGetFix(fixChan chan<- tinygoGPS.Fix) {
 
 func (gps *GPS) setDate(fix tinygoGPS.Fix) {
 	if gps.time.Year() == 1 {
-		gps.timeMutex.Lock()
+		//gps.timeMutex.Lock()
 		gps.time = time.Date(fix.Time.Year(), fix.Time.Month(), fix.Time.Day(), 0, 0, 0, 0, time.UTC)
 		gps.dateSet = true
-		gps.timeMutex.Unlock()
+		//gps.timeMutex.Unlock()
 	}
 }
 
 func (gps *GPS) setTime(fix tinygoGPS.Fix) {
-	gps.timeMutex.Lock()
+	//gps.timeMutex.Lock()
 	gps.timeSet = true
 	gps.time = time.Date(gps.time.Year(), gps.time.Month(), gps.time.Day(), fix.Time.Hour(), fix.Time.Minute(), fix.Time.Second(), 0, time.UTC)
-	gps.timeMutex.Unlock()
+	//gps.timeMutex.Unlock()
+}
+
+func (gps *GPS) Quit() {
+	gps.quit = true
 }

@@ -2,7 +2,6 @@ package tracking
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/pmcanseco/go-sat-tracker/internal/satellite"
@@ -42,42 +41,32 @@ const (
 	timeLayout = "02 Jan 15:04:05 MST"
 )
 
-func NewTracker(sat *satellite.Satellite, observer satellite.Coordinates, opts ...func(*Track)) Tracker {
+func NewTracker(sat *satellite.Satellite, observer satellite.Coordinates) Tracker {
 	t := &Track{
 		satellite:      sat,
 		location:       observer,
 		latestPlanTime: tinyTime.GetTime(),
-		plan: sat.Plan(observer, 10, 45,
-			tinyTime.GetTime(), tinyTime.GetTime().Add(7*24*time.Hour), time.Second),
-		mode: idle,
+		mode:           idle,
 	}
 
-	for _, o := range opts {
-		o(t)
-	}
+	println("MADE TRACKER! PLANNING ...")
+
+	t.plan = sat.Plan(observer, 10, 45,
+		tinyTime.GetTime(), tinyTime.GetTime().Add(2*24*time.Hour), 3*time.Second)
 
 	// make a fake pass that starts in 5 seconds and put it at the beginning for easier testing
-	fakePass := t.plan[0].CopyPassStartingAt(tinyTime.GetTime().Add(5*time.Second), time.Second)
+	fakePass := t.plan[0].CopyPassStartingAt(tinyTime.GetTime().Add(5*time.Second), 3*time.Second)
 	newPlan := []satellite.Pass{fakePass}
 	newPlan = append(newPlan, t.plan...)
 	t.plan = newPlan
 	t.populatedPlanLen = len(t.plan)
 
-	dualLog("Populated %d passes:\n", t.populatedPlanLen)
+	println("Populated ", t.populatedPlanLen, " passes:")
 	for _, p := range t.plan {
-		dualLog("  Start: %s, Max Elevation: %d\n",
-			p.GetStartTime().Format(timeLayout),
-			p.GetMaxElevation())
+		println("  Start: ", p.GetStartTime().Format(timeLayout), "Max Elevation: ", p.GetMaxElevation())
 	}
 
 	return t
-}
-
-func WithMotors(az, el Angler) func(*Track) {
-	return func(t *Track) {
-		t.azimuthMotor = az
-		t.elevationMotor = el
-	}
 }
 
 // if the plan has fewer items than the last time it was populated, re-populate it with another day's worth of passes
@@ -113,7 +102,7 @@ func (t *Track) Track(ctx context.Context) {
 
 			switch t.mode {
 			case idle:
-				dualLog("%s \t Mode: %d - Idle\n", tick.Format(timeLayout), t.mode)
+				println(tick.Format(timeLayout), " \t Mode: ", t.mode, " - Idle")
 				p := t.dequeuePass()
 				if p != nil {
 					t.currentPass = *p
@@ -121,24 +110,24 @@ func (t *Track) Track(ctx context.Context) {
 				}
 
 			case awaitingPass:
-				dualLog("%s \t Mode: %d - Awaiting Pass: %s to %s\n",
-					tick.Format(timeLayout), t.mode, t.currentPass.GetStartTime().Format(timeLayout), t.currentPass.GetEndTime().Format(timeLayout))
+				println(tick.Format(timeLayout), " \t Mode: ", t.mode, " - Awaiting Pass: ", t.currentPass.GetStartTime().Format(timeLayout), " to ", t.currentPass.GetEndTime().Format(timeLayout))
 				d := time.Second
 				if time.Until(t.currentPass.GetStartTime()) > 2*time.Minute {
 					d = time.Until(t.currentPass.GetStartTime().Add(-1 * time.Minute))
 				}
-				dualLog("waiting %s ...\n", d.String())
+				println("waiting ", d.String(), "...")
 				time.Sleep(d)
 				if t.currentPass.IsTimeWithinPass(tinyTime.GetTime()) {
 					t.mode = tracking
-					fmt.Println("switched to tracking mode")
+					println("switched to tracking mode")
 				}
 
 			case tracking:
 				now := getTiming(tinyTime.GetTime())
 				la := t.currentPass.GetLookAngle(time.Since(t.currentPass.GetStartTime())) //.Round(time.Second))
 				if la != nil {
-					dualLog("Tracking - %02d:%02d:%02d \t Az: %.1f \t El: %.1f \n", now.Hour, now.Minute, now.Second, la.AzimuthDegrees, la.ElevationDegrees)
+					//dualLog("Tracking - %02d:%02d:%02d \t Az: %.1f \t El: %.1f \n", now.Hour, now.Minute, now.Second, la.AzimuthDegrees, la.ElevationDegrees)
+					println("tracking - ", now.Hour, ":", now.Minute, ":", now.Second, "\t Az:", la.AzimuthDegrees, "\t El:", la.ElevationDegrees)
 					if t.azimuthMotor != nil {
 						t.azimuthMotor.CommandAngle(la.AzimuthDegrees)
 					}
@@ -149,16 +138,17 @@ func (t *Track) Track(ctx context.Context) {
 
 				if len(t.currentPass.FullPath) == 0 || time.Since(t.currentPass.GetEndTime()) > 0 {
 					t.mode = trackingComplete
-					fmt.Println("switch to trackingComplete")
+					println("switch to trackingComplete")
 				}
 
 			case trackingComplete:
-				dualLog("%s \t Mode: %d Tracking Complete\n", tick.Format(timeLayout), t.mode)
+				//dualLog("%s \t Mode: %d Tracking Complete\n", tick.Format(timeLayout), t.mode)
+				println("tracking complete")
 				if len(t.plan) < 3 {
-					fmt.Println("populating plan to fetch more passes...")
+					println("populating plan to fetch more passes...")
 					t.populatePlan()
 				} else {
-					fmt.Println("not populating plan as there's still 3 or more passes coming up")
+					println("not populating plan as there's still 3 or more passes coming up")
 				}
 				t.mode = idle
 			}
@@ -175,6 +165,6 @@ func getTiming(t time.Time) satellite.Timing {
 }
 
 func dualLog(s string, args ...interface{}) {
-	fmt.Printf(s, args...)
-	print(fmt.Sprintf(s, args...))
+	//fmt.Printf(s, args...)
+	//print(fmt.Sprintf(s, args...))
 }

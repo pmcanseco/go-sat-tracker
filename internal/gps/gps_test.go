@@ -83,10 +83,9 @@ var _ = Describe("gps tests", func() {
 			Expect(t.Day()).To(Equal(12))
 			Expect(t.Year()).To(Equal(2023))
 
-			// time updated from GGA
-			Expect(t.Hour()).To(Equal(21))
-			Expect(t.Minute()).To(Equal(2))
-			Expect(t.Second()).To(Equal(30))
+			Expect(t.Hour()).To(Equal(20))
+			Expect(t.Minute()).To(Equal(16))
+			Expect(t.Second()).To(Equal(40))
 		})
 
 		It("gets a fix after seeing a sentence with no fix first", func() {

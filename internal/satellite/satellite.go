@@ -29,13 +29,16 @@ type LookAnglesAtTime struct {
 }
 
 func NewSatellite(line1, line2 string, gravityConstant gosat.Gravity) *Satellite {
+	println("TLEToSat...")
 	sat, err := gosat.TLEToSat(
 		line1,
 		line2,
 		gravityConstant)
+	println("-> finished")
 
 	if err != nil {
-		panic(err)
+		println("error creating satellite: ", err.Error())
+		return nil
 	}
 
 	return &Satellite{sat: *sat}
@@ -90,16 +93,21 @@ func (s *Satellite) Plan(location Coordinates, minMinElevation, minMaxElevation 
 	var (
 		passes   []Pass
 		inPass   bool
-		currPass = Pass{FullPath: []LookAnglesAtTime{}}
+		currPass = Pass{}
 	)
 
 	for currTime.Before(endTime) {
+
+		println(currTime.Year(), "-", currTime.Month(), "-", currTime.Day(), " ", currTime.Hour(), ":", currTime.Minute(), ":", currTime.Second())
+
 		lookAngles := s.GetLookAnglesAt(location, currTime)
+
+		println("got look angles")
 
 		if !inPass &&
 			lookAngles.ElevationDegrees > minMinElevation {
 
-			//fmt.Println("starting pass!")
+			print(" -> starting pass! ", currTime.Year(), "-", currTime.Month(), "-", currTime.Day(), " ", currTime.Hour(), ":", currTime.Minute(), ":", currTime.Second(), "\n")
 
 			inPass = true
 			currPass = Pass{
@@ -107,19 +115,21 @@ func (s *Satellite) Plan(location Coordinates, minMinElevation, minMaxElevation 
 				startLookAngles: lookAngles,
 				midTime:         currTime,
 				midLookAngles:   lookAngles,
-				FullPath:        []LookAnglesAtTime{},
 				FullPathDelta:   delta,
 			}
 		}
 
 		if inPass {
+			if currPass.FullPath == nil {
+				currPass.FullPath = []LookAnglesAtTime{}
+			}
 			currPass.FullPath = append(currPass.FullPath, LookAnglesAtTime{
 				LookAngles: lookAngles,
 				Time:       currTime,
 			})
 
 			if currPass.midLookAngles.ElevationDegrees < lookAngles.ElevationDegrees {
-				//fmt.Printf("found midpoint at %s, El: %.2f\n", currTime.Format(time.Stamp), lookAngles.ElevationDegrees)
+				//println(" ---> found midpoint at ", currTime.Format(time.Stamp), ", El: ", lookAngles.ElevationDegrees)
 
 				currPass.midLookAngles = lookAngles
 				currPass.midTime = currTime
@@ -128,10 +138,11 @@ func (s *Satellite) Plan(location Coordinates, minMinElevation, minMaxElevation 
 
 		if inPass &&
 			lookAngles.ElevationDegrees < minMinElevation {
-			//fmt.Println("ending pass")
+			println(" -> ending pass")
 			inPass = false
 
 			if currPass.midLookAngles.ElevationDegrees > minMaxElevation {
+				println(" -> !!! saving pass !!!")
 				//fmt.Printf("pass meets minMaxElevation %.0f, saving to pass list\n", minMaxElevation)
 
 				//fmt.Printf("Start: %s, %.0f, %.0f \t Max: %s, %.0f, %.0f \t End: %s, %.0f, %.0f\n",
@@ -142,10 +153,13 @@ func (s *Satellite) Plan(location Coordinates, minMinElevation, minMaxElevation 
 				currPass.endTime = currTime
 				currPass.endLookAngles = lookAngles
 				passes = append(passes, currPass)
+				time.Sleep(3 * time.Second)
+				return passes
 			}
 		}
 
 		currTime = currTime.Add(delta)
+		time.Sleep(1 * time.Millisecond)
 	}
 
 	return passes

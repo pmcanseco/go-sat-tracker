@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"image/color"
 	"machine"
 	"time"
 
@@ -13,18 +11,17 @@ import (
 
 	"github.com/pmcanseco/go-sat-tracker/internal/display"
 	gpsDevice "github.com/pmcanseco/go-sat-tracker/internal/gps"
-	"github.com/pmcanseco/go-sat-tracker/internal/motors"
 	"github.com/pmcanseco/go-sat-tracker/internal/satellite"
 	"github.com/pmcanseco/go-sat-tracker/internal/steppermotor"
 	tinyTime "github.com/pmcanseco/go-sat-tracker/internal/time"
 	"github.com/pmcanseco/go-sat-tracker/internal/tracking"
 )
 
-var (
-	npRed   = []color.RGBA{{255, 0, 0, 127}}
-	npGreen = []color.RGBA{{0, 255, 0, 127}}
-	npBlue  = []color.RGBA{{0, 0, 255, 127}}
-)
+//var (
+//	npRed   = []color.RGBA{{255, 0, 0, 127}}
+//	npGreen = []color.RGBA{{0, 255, 0, 127}}
+//	npBlue  = []color.RGBA{{0, 0, 255, 127}}
+//)
 
 func main() {
 	//rgb := machine.GPIO16
@@ -39,29 +36,43 @@ func main() {
 	led.Low()
 	time.Sleep(500 * time.Millisecond)
 	led.High()
+	time.Sleep(500 * time.Millisecond)
+	led.Low()
+	time.Sleep(500 * time.Millisecond)
+	led.High()
+	time.Sleep(500 * time.Millisecond)
 
-	//for {
-	//	_ = neopixel.WriteColors([]color.RGBA{{255, 0, 0, 0}})
-	//
-	//	led.Low()
-	//	time.Sleep(time.Millisecond * 500)
-	//
-	//	_ = neopixel.WriteColors([]color.RGBA{{0, 255, 0, 0}})
-	//
-	//	led.High()
-	//	time.Sleep(time.Millisecond * 500)
-	//}
+	println("BOOTIN")
+	for i := 0; i < 5; i++ {
+		print(".")
+		time.Sleep(3 * time.Second)
+	}
+
+	println("\n\n\nhello world!!!")
+
+	//defer func() {
+	//	if r := recover(); r != nil {
+	//		println("panicked!")
+	//	}
+	//}()
 
 	time.Sleep(1 * time.Second)
-	i2c := machine.I2C1
-	err := i2c.Configure(machine.I2CConfig{
-		Frequency: 400 * machine.KHz,
-		SDA:       machine.I2C1_SDA_PIN,
-		SCL:       machine.I2C1_SCL_PIN,
-	})
-	if err != nil {
-		//_ = neopixel.WriteColors(npRed)
-	}
+
+	sat := satellite.NewSatellite(
+		"1 25544U 98067A   23071.22950734  .00021411  00000-0  39277-3 0  9995",
+		"2 25544  51.6409  88.8414 0005771  75.2083  23.5161 15.49204123386753",
+		gosat.GravityWGS84)
+	println("MADE SATELLITE!")
+
+	//i2c := machine.I2C1
+	//err := i2c.Configure(machine.I2CConfig{
+	//	Frequency: 400 * machine.KHz,
+	//	SDA:       machine.I2C1_SDA_PIN,
+	//	SCL:       machine.I2C1_SCL_PIN,
+	//})
+	//if err != nil {
+	//	_ = neopixel.WriteColors(npRed)
+	//}
 
 	//oled := ssd1306.NewI2C(i2c)
 	//oled.Configure(ssd1306.Config{
@@ -94,42 +105,44 @@ func main() {
 	ublox := tinygoGPS.NewUART(machine.UART1)
 	gps := gpsDevice.New(func() (string, error) {
 		s, err := ublox.NextSentence()
-		println(s)
+		//println(s)
 		return s, err
 	})
 
-	print("hello world!!!\n")
+	println("GETTING FIX")
 
-	print("GETTING FIX")
 	//gps.SetDebug(screen.Print)
 	gps.GetFix()
-	print("GOT FIX!")
+	println("GOT FIX!")
 	gps.SetDebug(nil)
 	now, _, lat, lon, alt := gps.GetCoordinates()
+	println("GOT COORDS! Lat: ", lat, "\tLon: ", lon, "\t Alt: ", alt)
+	for alt == 0 && now.Year() != 1 {
+		now, _, lat, lon, alt = gps.GetCoordinates()
+		println("GOT COORDS! Lat: ", lat, "\tLon: ", lon, "\t Alt: ", alt)
+		time.Sleep(300 * time.Millisecond)
+	}
 	now = gps.Time()
+	gps.Quit()
+	time.Sleep(2 * time.Second)
 	tinyTime.SetTime(now)
+	println("SET TIME! ", tinyTime.GetTime().Format(time.RFC822))
+	//elMotor := motors.New(getElevationMotor())
+	//println("MADE ELEV MOTOR!")
 
 	tracker := tracking.NewTracker(
-		satellite.NewSatellite(
-			"1 25544U 98067A   23071.22950734  .00021411  00000-0  39277-3 0  9995",
-			"2 25544  51.6409  88.8414 0005771  75.2083  23.5161 15.49204123386753",
-			gosat.GravityWGS84),
+		sat,
 		satellite.Coordinates{
 			LatitudeDegrees:  float64(lat),
 			LongitudeDegrees: float64(lon),
 			AltitudeKM:       float64(alt / 1000),
-		},
-		tracking.WithMotors(nil, motors.New(getElevationMotor())))
-	go tracker.Track(context.Background())
+		})
+	println("MADE TRACKER!")
+
+	tracker.Track(context.Background())
 	//tracker = tracker
 
-	//print("hello world 2 !!!\n")
-
-	for {
-		ts, numSats, lat, lon, alt := gps.GetCoordinates()
-		printGPS(nil, ts, numSats, lat, lon, alt)
-		time.Sleep(1 * time.Second)
-	}
+	println("TRACKING ENDED!")
 }
 
 func getDevice(device ssd1306.Device) display.Device {
@@ -141,8 +154,8 @@ func getDevice(device ssd1306.Device) display.Device {
 }
 
 func printGPS(printer display.Printer, ts time.Time, numSats int16, lat, lon float32, alt int32) {
-	println(fmt.Sprintf("%s lat %.2f lon %.2f alt %d sats %d",
-		ts.Format(time.RFC1123), lat, lon, alt, numSats))
+	//println(fmt.Sprintf("%s lat %.2f lon %.2f alt %d sats %d",
+	//	ts.Format(time.RFC1123), lat, lon, alt, numSats))
 	//printer.PrintAt(
 	//	0,
 	//	fmt.Sprintf("%s SATS:%d",

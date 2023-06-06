@@ -11,6 +11,8 @@ const DefaultDegreesPerStep = 1.8
 
 type Mover interface {
 	Move(steps int)
+	Enable()
+	Disable()
 }
 
 type Motor struct {
@@ -50,12 +52,20 @@ func (m *Motor) CommandAngle(angleDegrees float64) {
 	degreeDelta := angleDegrees - m.currAngleDegrees
 	stepDelta := degreeDelta / m.degreesPerStep
 	truncatedStepDelta := int(stepDelta)
+
+	m.motor.Enable()
 	m.motor.Move(truncatedStepDelta)
+	m.motor.Disable()
+
 	m.runningError += stepDelta - float64(truncatedStepDelta)
 
 	if math.Abs(m.runningError) > 1 {
 		truncatedRunningError := int(m.runningError)
+
+		m.motor.Enable()
 		m.motor.Move(truncatedRunningError)
+		m.motor.Disable()
+
 		m.runningError = m.runningError - float64(truncatedRunningError)
 	}
 
