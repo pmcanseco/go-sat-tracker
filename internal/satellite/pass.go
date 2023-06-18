@@ -6,6 +6,10 @@ import (
 	tinyTime "github.com/pmcanseco/go-sat-tracker/internal/time"
 )
 
+type Plan struct {
+	Passes []Pass
+}
+
 type Pass struct {
 	startTime       time.Time
 	startLookAngles LookAngles

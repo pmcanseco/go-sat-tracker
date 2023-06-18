@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/mailru/easyjson"
+
 	"github.com/pmcanseco/go-sat-tracker/internal/satellite"
 	tinyTime "github.com/pmcanseco/go-sat-tracker/internal/time"
 )
@@ -65,6 +67,23 @@ func NewTracker(sat *satellite.Satellite, observer satellite.Coordinates) Tracke
 	for _, p := range t.plan {
 		println("  Start: ", p.GetStartTime().Format(timeLayout), "Max Elevation: ", p.GetMaxElevation())
 	}
+
+	return t
+}
+
+func NewTrackerWithPlan(planJSON []byte) Tracker {
+	var plan satellite.Plan
+	err := easyjson.Unmarshal(planJSON, &plan)
+	if err != nil {
+		println("failed to unmarshal plan json")
+	}
+
+	t := &Track{
+		latestPlanTime: tinyTime.GetTime(),
+		mode:           idle,
+		plan:           plan.Passes,
+	}
+	t.populatedPlanLen = len(t.plan)
 
 	return t
 }

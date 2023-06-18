@@ -1,6 +1,7 @@
 package satellite
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -98,11 +99,11 @@ func (s *Satellite) Plan(location Coordinates, minMinElevation, minMaxElevation 
 
 	for currTime.Before(endTime) {
 
-		println(currTime.Year(), "-", currTime.Month(), "-", currTime.Day(), " ", currTime.Hour(), ":", currTime.Minute(), ":", currTime.Second())
+		//println(currTime.Year(), "-", currTime.Month(), "-", currTime.Day(), " ", currTime.Hour(), ":", currTime.Minute(), ":", currTime.Second())
 
 		lookAngles := s.GetLookAnglesAt(location, currTime)
 
-		println("got look angles")
+		//println("got look angles")
 
 		if !inPass &&
 			lookAngles.ElevationDegrees > minMinElevation {
@@ -143,23 +144,21 @@ func (s *Satellite) Plan(location Coordinates, minMinElevation, minMaxElevation 
 
 			if currPass.midLookAngles.ElevationDegrees > minMaxElevation {
 				println(" -> !!! saving pass !!!")
-				//fmt.Printf("pass meets minMaxElevation %.0f, saving to pass list\n", minMaxElevation)
+				fmt.Printf("pass meets minMaxElevation %.0f, saving to pass list\n", minMaxElevation)
 
-				//fmt.Printf("Start: %s, %.0f, %.0f \t Max: %s, %.0f, %.0f \t End: %s, %.0f, %.0f\n",
-				//	currPass.startTime.Format(time.RFC822), currPass.startLookAngles.AzimuthDegrees, currPass.startLookAngles.ElevationDegrees,
-				//	currPass.midTime.Format(time.RFC822), currPass.midLookAngles.AzimuthDegrees, currPass.midLookAngles.ElevationDegrees,
-				//	currTime.Format(time.RFC822), lookAngles.AzimuthDegrees, lookAngles.ElevationDegrees)
+				fmt.Printf("Start: %s, %.0f, %.0f \t Max: %s, %.0f, %.0f \t End: %s, %.0f, %.0f\n",
+					currPass.startTime.Format(time.RFC822), currPass.startLookAngles.AzimuthDegrees, currPass.startLookAngles.ElevationDegrees,
+					currPass.midTime.Format(time.RFC822), currPass.midLookAngles.AzimuthDegrees, currPass.midLookAngles.ElevationDegrees,
+					currTime.Format(time.RFC822), lookAngles.AzimuthDegrees, lookAngles.ElevationDegrees)
 
 				currPass.endTime = currTime
 				currPass.endLookAngles = lookAngles
 				passes = append(passes, currPass)
-				time.Sleep(3 * time.Second)
 				return passes
 			}
 		}
 
 		currTime = currTime.Add(delta)
-		time.Sleep(1 * time.Millisecond)
 	}
 
 	return passes
