@@ -25,9 +25,9 @@ type Track struct {
 	populatedPlanLen int
 	latestPlanTime   time.Time
 	mode             mode
-	currentPass      satellite.Pass
-	azimuthMotor     Angler
-	elevationMotor   Angler
+	//currentPass      satellite.Pass
+	azimuthMotor   Angler
+	elevationMotor Angler
 }
 
 type mode int
@@ -56,11 +56,7 @@ func NewTracker(sat *satellite.Satellite, observer satellite.Coordinates) Tracke
 	t.plan = sat.Plan(observer, 10, 45,
 		tinyTime.GetTime(), tinyTime.GetTime().Add(2*24*time.Hour), 3*time.Second)
 
-	// make a fake pass that starts in 5 seconds and put it at the beginning for easier testing
-	fakePass := t.plan[0].CopyPassStartingAt(tinyTime.GetTime().Add(5*time.Second), 3*time.Second)
-	newPlan := []satellite.Pass{fakePass}
-	newPlan = append(newPlan, t.plan...)
-	t.plan = newPlan
+	generateFakePassStartingSoon(t, 5*time.Second)
 	t.populatedPlanLen = len(t.plan)
 
 	println("Populated ", t.populatedPlanLen, " passes:")
@@ -71,7 +67,15 @@ func NewTracker(sat *satellite.Satellite, observer satellite.Coordinates) Tracke
 	return t
 }
 
-func NewTrackerWithPlan(planJSON []byte) Tracker {
+// generateFakePassStartingSoon makes a fake pass at the top of the plan that starts in duration d for easier testing
+func generateFakePassStartingSoon(t *Track, d time.Duration) {
+	fakePass := t.plan[0].CopyPassStartingAt(tinyTime.GetTime().Add(d), 3*time.Second)
+	newPlan := []satellite.Pass{fakePass}
+	newPlan = append(newPlan, t.plan...)
+	t.plan = newPlan
+}
+
+func NewTrackerWithPlan(planJSON []byte) *Track {
 	var plan satellite.Plan
 	err := easyjson.Unmarshal(planJSON, &plan)
 	if err != nil {
@@ -81,11 +85,28 @@ func NewTrackerWithPlan(planJSON []byte) Tracker {
 	t := &Track{
 		latestPlanTime: tinyTime.GetTime(),
 		mode:           idle,
-		plan:           plan.Passes,
+		plan:           []satellite.Pass{plan.Passes[0]},
 	}
+
+	time.Sleep(2 * time.Second)
+
+	//generateFakePassStartingSoon(t, 5*time.Second)
+
 	t.populatedPlanLen = len(t.plan)
 
 	return t
+}
+
+func WithElevationMotor(el Angler) func(*Track) {
+	return func(t *Track) {
+		t.elevationMotor = el
+	}
+}
+
+func WithAzimuthMotor(az Angler) func(*Track) {
+	return func(t *Track) {
+		t.azimuthMotor = az
+	}
 }
 
 // if the plan has fewer items than the last time it was populated, re-populate it with another day's worth of passes
@@ -111,42 +132,47 @@ func (t *Track) dequeuePass() *satellite.Pass {
 
 // Track grab the current time, figure out where we should be looking at
 func (t *Track) Track(ctx context.Context) {
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case tick := <-ticker.C:
+		case <-ticker.C:
 
 			switch t.mode {
 			case idle:
-				println(tick.Format(timeLayout), " \t Mode: ", t.mode, " - Idle")
-				p := t.dequeuePass()
-				if p != nil {
-					t.currentPass = *p
-					t.mode = awaitingPass
-				}
+				println(" \t Mode: ", t.mode, " - Idle")
+				//p := t.dequeuePass()
+				//if p != nil {
+				//	t.currentPass = *p
+				//	t.mode = awaitingPass
+				//}
+				//t.currentPass = t.plan[0]
+				t.mode = awaitingPass
 
 			case awaitingPass:
-				println(tick.Format(timeLayout), " \t Mode: ", t.mode, " - Awaiting Pass: ", t.currentPass.GetStartTime().Format(timeLayout), " to ", t.currentPass.GetEndTime().Format(timeLayout))
+				s := t.plan[0].GetStartTime()
+				now := tinyTime.GetTime()
+				println(now.Format(timeLayout), " \t Mode: ", t.mode, " - Awaiting Pass: ", s.Format(timeLayout)) //, " to ", t.plan[0].GetEndTime().Format(timeLayout))
 				d := time.Second
-				if time.Until(t.currentPass.GetStartTime()) > 2*time.Minute {
-					d = time.Until(t.currentPass.GetStartTime().Add(-1 * time.Minute))
+				if s.Sub(now) > 2*time.Minute {
+					d = s.Add(-1 * time.Minute).Sub(now)
 				}
 				println("waiting ", d.String(), "...")
 				time.Sleep(d)
-				if t.currentPass.IsTimeWithinPass(tinyTime.GetTime()) {
+				if t.plan[0].IsTimeWithinPass(tinyTime.GetTime()) {
 					t.mode = tracking
 					println("switched to tracking mode")
 				}
 
 			case tracking:
 				now := getTiming(tinyTime.GetTime())
-				la := t.currentPass.GetLookAngle(time.Since(t.currentPass.GetStartTime())) //.Round(time.Second))
+				la := t.plan[0].GetLookAngle(time.Since(t.plan[0].GetStartTime())) //.Round(time.Second))
 				if la != nil {
 					//dualLog("Tracking - %02d:%02d:%02d \t Az: %.1f \t El: %.1f \n", now.Hour, now.Minute, now.Second, la.AzimuthDegrees, la.ElevationDegrees)
 					println("tracking - ", now.Hour, ":", now.Minute, ":", now.Second, "\t Az:", la.AzimuthDegrees, "\t El:", la.ElevationDegrees)
+					//println("Tracking")
 					if t.azimuthMotor != nil {
 						t.azimuthMotor.CommandAngle(la.AzimuthDegrees)
 					}
@@ -155,7 +181,7 @@ func (t *Track) Track(ctx context.Context) {
 					}
 				}
 
-				if len(t.currentPass.FullPath) == 0 || time.Since(t.currentPass.GetEndTime()) > 0 {
+				if len(t.plan[0].FullPath) == 0 || time.Since(t.plan[0].GetEndTime()) > 0 {
 					t.mode = trackingComplete
 					println("switch to trackingComplete")
 				}
@@ -163,13 +189,16 @@ func (t *Track) Track(ctx context.Context) {
 			case trackingComplete:
 				//dualLog("%s \t Mode: %d Tracking Complete\n", tick.Format(timeLayout), t.mode)
 				println("tracking complete")
-				if len(t.plan) < 3 {
-					println("populating plan to fetch more passes...")
-					t.populatePlan()
-				} else {
-					println("not populating plan as there's still 3 or more passes coming up")
-				}
-				t.mode = idle
+				//if len(t.plan) < 3 {
+				//	println("populating plan to fetch more passes...")
+				//	t.populatePlan()
+				//} else {
+				//	println("not populating plan as there's still 3 or more passes coming up")
+				//}
+				//t.mode = idle
+				t.azimuthMotor.CommandAngle(0)
+				t.elevationMotor.CommandAngle(15)
+				return
 			}
 		}
 	}
@@ -183,7 +212,7 @@ func getTiming(t time.Time) satellite.Timing {
 	}
 }
 
-func dualLog(s string, args ...interface{}) {
-	//fmt.Printf(s, args...)
-	//print(fmt.Sprintf(s, args...))
-}
+//func dualLog(s string, args ...interface{}) {
+//fmt.Printf(s, args...)
+//print(fmt.Sprintf(s, args...))
+//}
