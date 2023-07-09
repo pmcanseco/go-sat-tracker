@@ -11,14 +11,14 @@ type Plan struct {
 }
 
 type Pass struct {
-	startTime       time.Time
-	startLookAngles LookAngles
+	StartTime       time.Time
+	StartLookAngles LookAngles
 
-	midTime       time.Time
-	midLookAngles LookAngles
+	MidTime       time.Time
+	MidLookAngles LookAngles
 
-	endTime       time.Time
-	endLookAngles LookAngles
+	EndTime       time.Time
+	EndLookAngles LookAngles
 
 	FullPath      []LookAnglesAtTime
 	FullPathDelta time.Duration
@@ -41,12 +41,12 @@ type Timing struct {
 //		FullPath        []LookAnglesAtTime `json:"full_path"`
 //	}
 //	t := temp{
-//		StartTime:       p.startTime,
-//		StartLookAngles: p.startLookAngles,
-//		MidTime:         p.midTime,
-//		MidLookAngles:   p.midLookAngles,
-//		EndTime:         p.endTime,
-//		EndLookAngles:   p.endLookAngles,
+//		StartTime:       p.StartTime,
+//		StartLookAngles: p.StartLookAngles,
+//		MidTime:         p.MidTime,
+//		MidLookAngles:   p.MidLookAngles,
+//		EndTime:         p.EndTime,
+//		EndLookAngles:   p.EndLookAngles,
 //		FullPath:        []LookAnglesAtTime{},
 //	}
 //	for k, v := range p.FullPath {
@@ -57,18 +57,18 @@ type Timing struct {
 
 func (p *Pass) CopyPassStartingAt(t time.Time, fullPathDelta time.Duration) Pass {
 	pass := Pass{
-		startTime:       t,
-		startLookAngles: p.startLookAngles,
-		midTime:         t.Add(p.midTime.Sub(p.startTime)),
-		midLookAngles:   p.midLookAngles,
-		endTime:         t.Add(p.endTime.Sub(p.startTime)),
-		endLookAngles:   p.endLookAngles,
+		StartTime:       t,
+		StartLookAngles: p.StartLookAngles,
+		MidTime:         t.Add(p.MidTime.Sub(p.StartTime)),
+		MidLookAngles:   p.MidLookAngles,
+		EndTime:         t.Add(p.EndTime.Sub(p.StartTime)),
+		EndLookAngles:   p.EndLookAngles,
 		FullPath:        []LookAnglesAtTime{},
 		FullPathDelta:   p.FullPathDelta,
 	}
 
 	for i, v := range p.FullPath {
-		v.Time = pass.startTime.Add(fullPathDelta * time.Duration(i))
+		v.Time = pass.StartTime.Add(fullPathDelta * time.Duration(i))
 		pass.FullPath = append(pass.FullPath, v)
 	}
 
@@ -76,23 +76,23 @@ func (p *Pass) CopyPassStartingAt(t time.Time, fullPathDelta time.Duration) Pass
 }
 
 func (p *Pass) IsTimeWithinPass(t time.Time) bool {
-	return !t.Before(p.startTime)
+	return !t.Before(p.StartTime)
 }
 
 func (p *Pass) GetStartTime() time.Time {
-	return p.startTime
+	return p.StartTime
 }
 
 func (p *Pass) GetEndTime() time.Time {
-	return p.endTime
+	return p.EndTime
 }
 
 //func (p *Pass) GetDuration() time.Duration {
-//	return p.endTime.Sub(p.startTime)
+//	return p.EndTime.Sub(p.StartTime)
 //}
 
 func (p *Pass) GetMaxElevation() int {
-	return int(p.midLookAngles.ElevationDegrees)
+	return int(p.MidLookAngles.ElevationDegrees)
 }
 
 func (p *Pass) GetLookAngle(d time.Duration) *LookAngles {

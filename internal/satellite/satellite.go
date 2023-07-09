@@ -9,8 +9,8 @@ import (
 )
 
 type Satellite struct {
-	noradID uint64
-	sat     gosat.Satellite
+	//noradID uint64
+	sat gosat.Satellite
 }
 
 type Coordinates struct {
@@ -112,10 +112,10 @@ func (s *Satellite) Plan(location Coordinates, minMinElevation, minMaxElevation 
 
 			inPass = true
 			currPass = Pass{
-				startTime:       currTime,
-				startLookAngles: lookAngles,
-				midTime:         currTime,
-				midLookAngles:   lookAngles,
+				StartTime:       currTime,
+				StartLookAngles: lookAngles,
+				MidTime:         currTime,
+				MidLookAngles:   lookAngles,
 				FullPathDelta:   delta,
 			}
 		}
@@ -129,11 +129,11 @@ func (s *Satellite) Plan(location Coordinates, minMinElevation, minMaxElevation 
 				Time:       currTime,
 			})
 
-			if currPass.midLookAngles.ElevationDegrees < lookAngles.ElevationDegrees {
+			if currPass.MidLookAngles.ElevationDegrees < lookAngles.ElevationDegrees {
 				//println(" ---> found midpoint at ", currTime.Format(time.Stamp), ", El: ", lookAngles.ElevationDegrees)
 
-				currPass.midLookAngles = lookAngles
-				currPass.midTime = currTime
+				currPass.MidLookAngles = lookAngles
+				currPass.MidTime = currTime
 			}
 		}
 
@@ -142,17 +142,17 @@ func (s *Satellite) Plan(location Coordinates, minMinElevation, minMaxElevation 
 			println(" -> ending pass")
 			inPass = false
 
-			if currPass.midLookAngles.ElevationDegrees > minMaxElevation {
+			if currPass.MidLookAngles.ElevationDegrees > minMaxElevation {
 				println(" -> !!! saving pass !!!")
 				fmt.Printf("pass meets minMaxElevation %.0f, saving to pass list\n", minMaxElevation)
 
 				fmt.Printf("Start: %s, %.0f, %.0f \t Max: %s, %.0f, %.0f \t End: %s, %.0f, %.0f\n",
-					currPass.startTime.Format(time.RFC822), currPass.startLookAngles.AzimuthDegrees, currPass.startLookAngles.ElevationDegrees,
-					currPass.midTime.Format(time.RFC822), currPass.midLookAngles.AzimuthDegrees, currPass.midLookAngles.ElevationDegrees,
+					currPass.StartTime.Format(time.RFC822), currPass.StartLookAngles.AzimuthDegrees, currPass.StartLookAngles.ElevationDegrees,
+					currPass.MidTime.Format(time.RFC822), currPass.MidLookAngles.AzimuthDegrees, currPass.MidLookAngles.ElevationDegrees,
 					currTime.Format(time.RFC822), lookAngles.AzimuthDegrees, lookAngles.ElevationDegrees)
 
-				currPass.endTime = currTime
-				currPass.endLookAngles = lookAngles
+				currPass.EndTime = currTime
+				currPass.EndLookAngles = lookAngles
 				passes = append(passes, currPass)
 				return passes
 			}
