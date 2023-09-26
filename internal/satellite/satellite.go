@@ -1,6 +1,7 @@
 package satellite
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -8,8 +9,8 @@ import (
 )
 
 type Satellite struct {
-	noradID uint64
-	sat     gosat.Satellite
+	//noradID uint64
+	sat gosat.Satellite
 }
 
 type Coordinates struct {
@@ -29,13 +30,16 @@ type LookAnglesAtTime struct {
 }
 
 func NewSatellite(line1, line2 string, gravityConstant gosat.Gravity) *Satellite {
+	println("TLEToSat...")
 	sat, err := gosat.TLEToSat(
 		line1,
 		line2,
 		gravityConstant)
+	println("-> finished")
 
 	if err != nil {
-		panic(err)
+		println("error creating satellite: ", err.Error())
+		return nil
 	}
 
 	return &Satellite{sat: *sat}
@@ -90,58 +94,67 @@ func (s *Satellite) Plan(location Coordinates, minMinElevation, minMaxElevation 
 	var (
 		passes   []Pass
 		inPass   bool
-		currPass = Pass{FullPath: []LookAnglesAtTime{}}
+		currPass = Pass{}
 	)
 
 	for currTime.Before(endTime) {
+
+		//println(currTime.Year(), "-", currTime.Month(), "-", currTime.Day(), " ", currTime.Hour(), ":", currTime.Minute(), ":", currTime.Second())
+
 		lookAngles := s.GetLookAnglesAt(location, currTime)
+
+		//println("got look angles")
 
 		if !inPass &&
 			lookAngles.ElevationDegrees > minMinElevation {
 
-			//fmt.Println("starting pass!")
+			print(" -> starting pass! ", currTime.Year(), "-", currTime.Month(), "-", currTime.Day(), " ", currTime.Hour(), ":", currTime.Minute(), ":", currTime.Second(), "\n")
 
 			inPass = true
 			currPass = Pass{
-				startTime:       currTime,
-				startLookAngles: lookAngles,
-				midTime:         currTime,
-				midLookAngles:   lookAngles,
-				FullPath:        []LookAnglesAtTime{},
+				StartTime:       currTime,
+				StartLookAngles: lookAngles,
+				MidTime:         currTime,
+				MidLookAngles:   lookAngles,
 				FullPathDelta:   delta,
 			}
 		}
 
 		if inPass {
+			if currPass.FullPath == nil {
+				currPass.FullPath = []LookAnglesAtTime{}
+			}
 			currPass.FullPath = append(currPass.FullPath, LookAnglesAtTime{
 				LookAngles: lookAngles,
 				Time:       currTime,
 			})
 
-			if currPass.midLookAngles.ElevationDegrees < lookAngles.ElevationDegrees {
-				//fmt.Printf("found midpoint at %s, El: %.2f\n", currTime.Format(time.Stamp), lookAngles.ElevationDegrees)
+			if currPass.MidLookAngles.ElevationDegrees < lookAngles.ElevationDegrees {
+				//println(" ---> found midpoint at ", currTime.Format(time.Stamp), ", El: ", lookAngles.ElevationDegrees)
 
-				currPass.midLookAngles = lookAngles
-				currPass.midTime = currTime
+				currPass.MidLookAngles = lookAngles
+				currPass.MidTime = currTime
 			}
 		}
 
 		if inPass &&
 			lookAngles.ElevationDegrees < minMinElevation {
-			//fmt.Println("ending pass")
+			println(" -> ending pass")
 			inPass = false
 
-			if currPass.midLookAngles.ElevationDegrees > minMaxElevation {
-				//fmt.Printf("pass meets minMaxElevation %.0f, saving to pass list\n", minMaxElevation)
+			if currPass.MidLookAngles.ElevationDegrees > minMaxElevation {
+				println(" -> !!! saving pass !!!")
+				fmt.Printf("pass meets minMaxElevation %.0f, saving to pass list\n", minMaxElevation)
 
-				//fmt.Printf("Start: %s, %.0f, %.0f \t Max: %s, %.0f, %.0f \t End: %s, %.0f, %.0f\n",
-				//	currPass.startTime.Format(time.RFC822), currPass.startLookAngles.AzimuthDegrees, currPass.startLookAngles.ElevationDegrees,
-				//	currPass.midTime.Format(time.RFC822), currPass.midLookAngles.AzimuthDegrees, currPass.midLookAngles.ElevationDegrees,
-				//	currTime.Format(time.RFC822), lookAngles.AzimuthDegrees, lookAngles.ElevationDegrees)
+				fmt.Printf("Start: %s, %.0f, %.0f \t Max: %s, %.0f, %.0f \t End: %s, %.0f, %.0f\n",
+					currPass.StartTime.Format(time.RFC822), currPass.StartLookAngles.AzimuthDegrees, currPass.StartLookAngles.ElevationDegrees,
+					currPass.MidTime.Format(time.RFC822), currPass.MidLookAngles.AzimuthDegrees, currPass.MidLookAngles.ElevationDegrees,
+					currTime.Format(time.RFC822), lookAngles.AzimuthDegrees, lookAngles.ElevationDegrees)
 
-				currPass.endTime = currTime
-				currPass.endLookAngles = lookAngles
+				currPass.EndTime = currTime
+				currPass.EndLookAngles = lookAngles
 				passes = append(passes, currPass)
+				return passes
 			}
 		}
 
